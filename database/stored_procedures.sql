@@ -458,3 +458,64 @@ END
 GO
 
 
+/*
+    Logout
+    Recibe:
+    @inIdUsuario - id del usuario que cierra sesion
+    @inIP        - IP desde donde se hace el logout
+    Retorna: @outResultCode: 0 si exitoso, >50000 si hubo error
+*/
+CREATE PROCEDURE dbo.Logout
+    @inIdUsuario    INT
+,   @inIP           VARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON
+    DECLARE @outResultCode INT = 0
+    DECLARE @ahora DATETIME = GETDATE()
+
+    BEGIN TRY
+
+        /* Logout exitoso: Evento 4*/
+        EXEC dbo.RegistrarBitacora
+            @inIdTipoEvento = 4
+        ,   @inDescripcion  = ''
+        ,   @inIdUsuario    = @inIdUsuario
+        ,   @inIpPostIn     = @inIP
+        ,   @inPostTime     = @ahora
+
+    END TRY
+    BEGIN CATCH
+
+        SET @outResultCode = 50008
+
+        INSERT INTO dbo.DBError
+        (
+            UserName
+        ,   Number
+        ,   [State]
+        ,   Severity
+        ,   Line
+        ,   [Procedure]
+        ,   [Message]
+        ,   [DateTime]
+        )
+        VALUES
+        (
+            SUSER_NAME()
+        ,   ERROR_NUMBER()
+        ,   ERROR_STATE()
+        ,   ERROR_SEVERITY()
+        ,   ERROR_LINE()
+        ,   ERROR_PROCEDURE()
+        ,   ERROR_MESSAGE()
+        ,   GETDATE()
+        )
+
+    END CATCH
+
+    SELECT @outResultCode AS resultCode
+
+END
+GO
+
