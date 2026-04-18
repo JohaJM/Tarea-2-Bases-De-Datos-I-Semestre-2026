@@ -95,6 +95,7 @@ BEGIN
 END
 GO
 
+
 /*
     InsertarEmpleado
     Recibe:
@@ -374,4 +375,86 @@ BEGIN
 
 END
 GO
+
+
+/*
+    ListarMovimientos
+    Recibe:
+    @inIdEmpleado - id del empleado a consultar
+    @inIdUsuario  - id del usuario en sesion
+    @inIP  - IP desde donde se hace la consulta
+    Retorna: Datos del empleado y lista de sus movimientos
+             ordenados por fecha descendente
+*/
+CREATE PROCEDURE dbo.ListarMovimientos
+    @inIdEmpleado   INT
+,   @inIdUsuario    INT         = 0
+,   @inIP           VARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON
+    DECLARE @outResultCode INT = 0
+
+    BEGIN TRY
+
+        SELECT
+            E.ValorDocumentoIdentidad
+        ,   E.Nombre
+        ,   E.SaldoVacaciones
+        FROM dbo.Empleado AS E
+        WHERE (E.id = @inIdEmpleado)
+            AND (E.EsActivo = 1)
+
+        SELECT
+            M.Fecha
+        ,   TM.Nombre  AS NombreTipoMovimiento
+        ,   M.Monto
+        ,   M.NuevoSaldo
+        ,   U.Username AS NombreUsuario
+        ,   M.IpPostIn
+        ,   M.PostTime
+        FROM dbo.Movimiento AS M
+        INNER JOIN dbo.TipoMovimiento AS TM ON (M.idTipoMovimiento = TM.id)
+        INNER JOIN dbo.Usuario AS U ON (M.idUsuario = U.id)
+        WHERE (M.idEmpleado = @inIdEmpleado)
+        ORDER BY M.Fecha DESC
+
+        /* Listar movimientos no tiene tipo de evento definido en R7
+           No se registra en bitacora */
+
+    END TRY
+    BEGIN CATCH
+
+        SET @outResultCode = 50008
+
+        INSERT INTO dbo.DBError
+        (
+            UserName
+        ,   Number
+        ,   [State]
+        ,   Severity
+        ,   Line
+        ,   [Procedure]
+        ,   [Message]
+        ,   [DateTime]
+        )
+        VALUES
+        (
+            SUSER_NAME()
+        ,   ERROR_NUMBER()
+        ,   ERROR_STATE()
+        ,   ERROR_SEVERITY()
+        ,   ERROR_LINE()
+        ,   ERROR_PROCEDURE()
+        ,   ERROR_MESSAGE()
+        ,   GETDATE()
+        )
+
+    END CATCH
+
+    SELECT @outResultCode AS resultCode
+
+END
+GO
+
 
