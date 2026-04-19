@@ -939,3 +939,98 @@ BEGIN
 
 END;
 GO
+
+/*
+SP: RegistrarIntentoEliminarEmpleado
+¿Qué hace?: Registra en bitácora el intento
+de borrado de un empleado.
+*/
+
+CREATE PROCEDURE [dbo].[RegistrarIntentoEliminarEmpleado]
+	--Parametros de entrada
+	@inIdEmpleado INT
+	, @inIdUsuario INT
+	, @inIpPostIn VARCHAR(50)
+	, @inPostTime DATETIME
+
+	--Parametro de salida
+	, @outResultCode INT OUTPUT
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	DECLARE @DescripcionBitacora VARCHAR(500);
+	DECLARE @Nombre VARCHAR(100);
+	DECLARE @ValorDocIdentidad VARCHAR(50);
+	DECLARE @NombrePuesto VARCHAR(50);
+	DECLARE @SaldoVacaciones DECIMAL(10,2);
+
+	SET @outResultCode = 50008;
+
+	BEGIN TRY
+
+		SELECT
+			@Nombre = E.Nombre
+			, @ValorDocIdentidad = E.ValorDocumentoIdentidad
+			, @SaldoVacaciones = E.SaldoVacaciones
+			, @NombrePuesto = P.Nombre
+		FROM dbo.Empleado AS E
+		INNER JOIN dbo.Puesto AS P
+			ON (E.IdPuesto = P.Id)
+		WHERE (E.Id = @inIdEmpleado)
+			AND (E.EsActivo = 1);
+
+		IF (@Nombre IS NOT NULL)
+		BEGIN
+			SET @DescripcionBitacora =
+				'Intento de borrado - Documento: ' + ISNULL(@ValorDocIdentidad, '')
+				+ ', Nombre: ' + ISNULL(@Nombre, '')
+				+ ', Puesto: ' + ISNULL(@NombrePuesto, '')
+				+ ', SaldoVacaciones: '
+				+ ISNULL(CAST(@SaldoVacaciones AS VARCHAR(20)), '');
+
+			EXEC dbo.RegistrarBitacora
+				@inIdTipoEvento = 9
+				, @inDescripcion = @DescripcionBitacora
+				, @inIdUsuario = @inIdUsuario
+				, @inIpPostIn = @inIpPostIn
+				, @inPostTime = @inPostTime;
+
+			SET @outResultCode = 0;
+		END
+
+	END TRY
+
+	BEGIN CATCH
+
+		SET @outResultCode = 50008;
+
+		INSERT INTO dbo.DBError
+		(
+			UserName
+			, Number
+			, [State]
+			, Severity
+			, Line
+			, [Procedure]
+			, [Message]
+			, [DateTime]
+		)
+		VALUES
+		(
+			SUSER_SNAME()
+			, ERROR_NUMBER()
+			, ERROR_STATE()
+			, ERROR_SEVERITY()
+			, ERROR_LINE()
+			, ERROR_PROCEDURE()
+			, ERROR_MESSAGE()
+			, GETDATE()
+		);
+
+	END CATCH
+
+	SELECT @outResultCode AS resultado;
+
+END;
+GO
