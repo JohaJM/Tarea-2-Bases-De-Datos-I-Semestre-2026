@@ -669,3 +669,137 @@ BEGIN
 
 END;
 GO
+
+/*
+SP: ConsultarEmpleado
+¿Qué hace?: permite consultar el valor de documento
+de identidad, nombre, nombre del puesto y SaldoVacaciones
+de un empleado
+*/
+
+CREATE PROCEDURE [dbo].[ConsultarEmpleado]
+	--Parametros de entrada
+	@inIdEmpleado INT
+	, @inIdUsuario INT
+	, @inIpPostIn VARCHAR(50)
+	, @inPostTime DATETIME
+
+	--Parametro de salida
+	, @outResultCode INT OUTPUT
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	--Variables
+	DECLARE @DescripcionBitacora VARCHAR(500);
+	DECLARE @Nombre VARCHAR(100);
+	DECLARE @ValorDocIdentidad VARCHAR(50);
+	DECLARE @NombrePuesto VARCHAR(50);
+	DECLARE @SaldoVacaciones DECIMAL(10,2);
+
+	--Valor por defecto de error de BD
+	SET @outResultCode = 50008;
+
+	BEGIN TRY
+
+		--Obtiene los datos
+		SELECT
+			@Nombre = E.Nombre
+			, @ValorDocIdentidad = E.ValorDocumentoIdentidad
+			, @SaldoVacaciones = E.SaldoVacaciones
+			, @NombrePuesto = P.Nombre
+		FROM dbo.Empleado AS E
+		INNER JOIN dbo.Puesto AS P
+			ON (E.IdPuesto = P.Id)
+		WHERE (E.Id = @inIdEmpleado)
+			AND (E.EsActivo = 1);
+
+		--Valida que el empleado esta activo
+		IF (@Nombre IS NULL)
+		BEGIN
+			SET @outResultCode = 50008;
+
+			SET @DescripcionBitacora =
+				'Consulta empleado fallida - IdEmpleado: '
+				+ CAST(@inIdEmpleado AS VARCHAR(20))
+				+ ', CodigoError: ' + CAST(@outResultCode AS VARCHAR(10));
+
+			EXEC dbo.RegistrarBitacora
+				@inIdTipoEvento = 11
+				, @inDescripcion = @DescripcionBitacora
+				, @inIdUsuario = @inIdUsuario
+				, @inIpPostIn = @inIpPostIn
+				, @inPostTime = @inPostTime;
+		END
+		ELSE
+		BEGIN
+			--Consulta exitosa
+			SELECT
+				@ValorDocIdentidad AS ValorDocumentoIdentidad
+				, @Nombre AS Nombre
+				, @NombrePuesto AS NombrePuesto
+				, @SaldoVacaciones AS SaldoVacaciones;
+
+			SET @outResultCode = 0;
+
+			--Bitacora de consulta realizada con exito
+			SET @DescripcionBitacora =
+				'Consulta empleado - Documento: ' + ISNULL(@ValorDocIdentidad, '')
+				+ ', Nombre: ' + ISNULL(@Nombre, '')
+				+ ', Puesto: ' + ISNULL(@NombrePuesto, '')
+				+ ', SaldoVacaciones: ' 
+				+ ISNULL(CAST(@SaldoVacaciones AS VARCHAR(20)), '');
+
+			EXEC dbo.RegistrarBitacora
+				@inIdTipoEvento = 11
+				, @inDescripcion = @DescripcionBitacora
+				, @inIdUsuario = @inIdUsuario
+				, @inIpPostIn = @inIpPostIn
+				, @inPostTime = @inPostTime;
+		END
+
+	END TRY
+
+	BEGIN CATCH
+
+		SET @outResultCode = 50008;
+
+		--Registra error en DBError
+		INSERT INTO dbo.DBError
+		(
+			UserName
+			, Number
+			, [State]
+			, Severity
+			, Line
+			, [Procedure]
+			, [Message]
+			, [DateTime]
+		)
+		VALUES
+		(
+			SUSER_SNAME()
+			, ERROR_NUMBER()
+			, ERROR_STATE()
+			, ERROR_SEVERITY()
+			, ERROR_LINE()
+			, ERROR_PROCEDURE()
+			, ERROR_MESSAGE()
+			, GETDATE()
+		);
+
+		--Bitacora error tecnico
+		EXEC dbo.RegistrarBitacora
+			@inIdTipoEvento = 11
+			, @inDescripcion = 'Error inesperado en la base de datos al consultar empleado'
+			, @inIdUsuario = @inIdUsuario
+			, @inIpPostIn = @inIpPostIn
+			, @inPostTime = @inPostTime;
+
+	END CATCH
+
+	--Retorno para Python
+	SELECT @outResultCode AS resultado;
+
+END;
+GO
