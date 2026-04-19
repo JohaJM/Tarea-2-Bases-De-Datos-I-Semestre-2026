@@ -592,3 +592,80 @@ BEGIN
 
 END;
 GO
+
+/*
+SP: RegistrarBitacora
+¿Qué hace?: Inserta en la tabla BitacoraEvento
+la información de cada evento que se realiza 
+en el sistema.
+*/
+
+CREATE PROCEDURE [dbo].[RegistrarBitacora]
+	--Parametros de entrada
+	@inIdTipoEvento INT
+	, @inDescripcion VARCHAR(500)
+	, @inIdUsuario INT
+	, @inIpPostIn VARCHAR(50)
+	, @inPostTime DATETIME
+AS
+BEGIN
+
+	SET NOCOUNT ON;
+
+	--Variable
+	DECLARE @outResultCode INT;
+	SET @outResultCode = 50008; -- Error de BD por defecto
+
+	BEGIN TRY
+
+		INSERT INTO dbo.BitacoraEvento
+		(
+			IdTipoEvento
+			, Descripcion
+			, IdUsuario
+			, IpPostIn
+			, PostTime
+		)
+		VALUES
+		(
+			@inIdTipoEvento
+			, @inDescripcion
+			, @inIdUsuario
+			, @inIpPostIn
+			, @inPostTime
+		);
+
+		SET @outResultCode = 0;
+
+	END TRY
+
+	BEGIN CATCH
+
+		--Registra error en DBError
+		INSERT INTO dbo.DBError
+			( UserName
+			, Number
+			, [State]
+			, Severity
+			, Line
+			, [Procedure]
+			, [Message]
+			, [DateTime]
+			)
+		VALUES
+			( SUSER_SNAME()
+			, ERROR_NUMBER()
+			, ERROR_STATE()
+			, ERROR_SEVERITY()
+			, ERROR_LINE()
+			, ERROR_PROCEDURE()
+			, ERROR_MESSAGE()
+			, GETDATE()
+			);
+
+	END CATCH
+
+	SELECT @outResultCode AS resultado;
+
+END;
+GO
