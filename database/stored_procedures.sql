@@ -519,3 +519,76 @@ BEGIN
 END
 GO
 
+/*
+SP: ObtenerMensajeError
+¿Qué hace?: Dado un código de error,
+indica el mensaje de error asociado
+en la tabla Error.
+*/
+
+CREATE PROCEDURE [dbo].[ObtenerMensajeError]
+	--Parametro de entrada
+	@inCodigo INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	--Variables
+	DECLARE @outResultCode INT;
+	DECLARE @Descripcion VARCHAR(500);
+
+	--Asume error de base de datos por defecto
+	SET @outResultCode = 50008;
+
+	BEGIN TRY
+
+		--Busca la descripcion del error
+		SELECT @Descripcion = E.Descripcion
+		FROM dbo.Error AS E
+		WHERE (E.Codigo = @inCodigo);
+
+		--Verifica si encontro el codigo
+		IF (@Descripcion IS NOT NULL)
+		BEGIN
+			SET @outResultCode = 0;
+		END
+
+	END TRY
+
+	BEGIN CATCH
+
+		--Inserta error en DBError
+		INSERT INTO dbo.DBError
+		(
+			UserName
+			, Number
+			, [State]
+			, Severity
+			, Line
+			, [Procedure]
+			, [Message]
+			, [DateTime]
+		)
+		VALUES
+		(
+			--Devuelve el nombre de identificacion de inicio
+			--de sesion del usuario.
+			SUSER_NAME()
+			, ERROR_NUMBER()
+			, ERROR_STATE()
+			, ERROR_SEVERITY()
+			, ERROR_LINE()
+			, ERROR_PROCEDURE()
+			, ERROR_MESSAGE()
+			, GETDATE()
+		);
+
+	END CATCH
+
+	--Retorno final
+	SELECT 
+		@Descripcion AS Descripcion
+		, @outResultCode AS resultado;
+
+END;
+GO
