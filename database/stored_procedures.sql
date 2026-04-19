@@ -803,3 +803,139 @@ BEGIN
 
 END;
 GO
+
+/*
+SP: EliminarEmpleado
+¿Qué hace?: Realiza el borrado lógico de un
+empleado (EsActivo = 0).
+*/
+
+CREATE PROCEDURE [dbo].[EliminarEmpleado]
+	--Parametros de entrada
+	@inIdEmpleado INT
+	, @inIdUsuario INT
+	, @inIpPostIn VARCHAR(50)
+	, @inPostTime DATETIME
+
+	--Parametro de salida
+	, @outResultCode INT OUTPUT
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	--Variables
+	DECLARE @DescripcionBitacora VARCHAR(500);
+	DECLARE @Nombre VARCHAR(100);
+	DECLARE @ValorDocIdentidad VARCHAR(50);
+	DECLARE @NombrePuesto VARCHAR(50);
+	DECLARE @SaldoVacaciones DECIMAL(10,2);
+
+	--Valor por defecto de error de BD
+	SET @outResultCode = 50008;
+
+	BEGIN TRY
+
+		--Obtiene datos
+		SELECT
+			@Nombre = E.Nombre
+			, @ValorDocIdentidad = E.ValorDocumentoIdentidad
+			, @SaldoVacaciones = E.SaldoVacaciones
+			, @NombrePuesto = P.Nombre
+		FROM dbo.Empleado AS E
+		INNER JOIN dbo.Puesto AS P
+			ON (E.IdPuesto = P.Id)
+		WHERE (E.Id = @inIdEmpleado)
+			AND (E.EsActivo = 1);
+
+		--No existe o ya inactivo
+		IF (@Nombre IS NULL)
+		BEGIN
+			SET @outResultCode = 50008;
+
+			SET @DescripcionBitacora =
+				'Borrado empleado fallido - IdEmpleado: '
+				+ CAST(@inIdEmpleado AS VARCHAR(20))
+				+ ', CodigoError: ' + CAST(@outResultCode AS VARCHAR(10));
+
+			EXEC dbo.RegistrarBitacora
+				@inIdTipoEvento = 9 --Se intento 
+				, @inDescripcion = @DescripcionBitacora
+				, @inIdUsuario = @inIdUsuario
+				, @inIpPostIn = @inIpPostIn
+				, @inPostTime = @inPostTime;
+		END
+		ELSE
+		BEGIN
+			BEGIN TRANSACTION;
+
+				UPDATE dbo.Empleado
+				SET EsActivo = 0
+				WHERE (Id = @inIdEmpleado);
+
+			COMMIT TRANSACTION;
+
+			SET @outResultCode = 0;
+
+			--Bitacora exito
+			SET @DescripcionBitacora =
+				'Borrado empleado - Documento: ' + ISNULL(@ValorDocIdentidad, '')
+				+ ', Nombre: ' + ISNULL(@Nombre, '')
+				+ ', Puesto: ' + ISNULL(@NombrePuesto, '')
+				+ ', SaldoVacaciones: '
+				+ ISNULL(CAST(@SaldoVacaciones AS VARCHAR(20)), '');
+
+			EXEC dbo.RegistrarBitacora
+				@inIdTipoEvento = 10
+				, @inDescripcion = @DescripcionBitacora
+				, @inIdUsuario = @inIdUsuario
+				, @inIpPostIn = @inIpPostIn
+				, @inPostTime = @inPostTime;
+		END
+
+	END TRY
+
+	BEGIN CATCH
+
+		IF (XACT_STATE() <> 0)
+		BEGIN
+			ROLLBACK TRANSACTION;
+		END
+
+		SET @outResultCode = 50008;
+
+		INSERT INTO dbo.DBError
+		(
+			UserName
+			, Number
+			, [State]
+			, Severity
+			, Line
+			, [Procedure]
+			, [Message]
+			, [DateTime]
+		)
+		VALUES
+		(
+			SUSER_SNAME()
+			, ERROR_NUMBER()
+			, ERROR_STATE()
+			, ERROR_SEVERITY()
+			, ERROR_LINE()
+			, ERROR_PROCEDURE()
+			, ERROR_MESSAGE()
+			, GETDATE()
+		);
+
+		EXEC dbo.RegistrarBitacora
+			@inIdTipoEvento = 11
+			, @inDescripcion = 'Error inesperado en borrado de empleado'
+			, @inIdUsuario = @inIdUsuario
+			, @inIpPostIn = @inIpPostIn
+			, @inPostTime = @inPostTime;
+
+	END CATCH
+
+	SELECT @outResultCode AS resultado;
+
+END;
+GO
