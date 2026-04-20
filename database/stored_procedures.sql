@@ -1034,3 +1034,185 @@ BEGIN
 
 END;
 GO
+
+/*
+SP: ActualizarEmpleado
+¿Qué hace?: Permite editar el ValorDocumentoIdentidad,
+Nombre e IdPuesto de un empleado existente. Valida que
+no exista otro empleado con el mismo documento de
+identidad o el mismo nombre. 
+*/
+
+CREATE PROCEDURE [dbo].[ActualizarEmpleado]
+	--Parametros de entrada
+	@inIdEmpleado INT
+	, @inNuevoValorDocIdentidad VARCHAR(50)
+	, @inNuevoNombre VARCHAR(100)
+	, @inNuevoIdPuesto INT
+	, @inIdUsuario INT
+	, @inIpPostIn VARCHAR(50)
+	, @inPostTime DATETIME
+
+	--Parametro de salida
+	, @outResultCode INT OUTPUT
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	--Variable de control
+	DECLARE @DescripcionBitacora VARCHAR(500);
+
+	--Datos anteriores
+	DECLARE @NombreAntes VARCHAR(100);
+	DECLARE @DocIdentAntes VARCHAR(50);
+	DECLARE @NombrePuestoAntes VARCHAR(50);
+	DECLARE @SaldoVacaciones DECIMAL(10,2);
+
+	--Nuevo puesto
+	DECLARE @NombreNuevoPuesto VARCHAR(50);
+
+	--Valor por defecto de error de BD
+	SET @outResultCode = 50008;
+
+	BEGIN TRY
+
+		--Obtiene datos actuales para la bitacora
+		SELECT
+			@NombreAntes = E.Nombre
+			, @DocIdentAntes = E.ValorDocumentoIdentidad
+			, @SaldoVacaciones = E.SaldoVacaciones
+			, @NombrePuestoAntes = P.Nombre
+		FROM dbo.Empleado AS E
+		INNER JOIN dbo.Puesto AS P
+			ON (E.IdPuesto = P.Id)
+		WHERE (E.Id = @inIdEmpleado)
+			AND (E.EsActivo = 1);
+
+		SELECT @NombreNuevoPuesto = P.Nombre
+		FROM dbo.Puesto AS P
+		WHERE (P.Id = @inNuevoIdPuesto);
+
+		--Validacion de documento duplicado
+		IF EXISTS
+		(
+			SELECT 1
+			FROM dbo.Empleado AS E
+			WHERE (E.ValorDocumentoIdentidad = @inNuevoValorDocIdentidad)
+				AND (E.Id <> @inIdEmpleado)
+				AND (E.EsActivo = 1)
+		)
+		BEGIN
+			SET @outResultCode = 50006;
+		END
+
+		--Validacion de nombre duplicado
+		ELSE IF EXISTS
+		(
+			SELECT 1
+			FROM dbo.Empleado AS E
+			WHERE (E.Nombre = @inNuevoNombre)
+				AND (E.Id <> @inIdEmpleado)
+				AND (E.EsActivo = 1)
+		)
+		BEGIN
+			SET @outResultCode = 50007;
+		END
+
+		ELSE
+		BEGIN
+			--Tansaccion de actualizacion de empleado
+			BEGIN TRANSACTION;
+
+				UPDATE dbo.Empleado
+				SET
+					ValorDocumentoIdentidad = @inNuevoValorDocIdentidad
+					, Nombre = @inNuevoNombre
+					, IdPuesto = @inNuevoIdPuesto
+				WHERE (Id = @inIdEmpleado);
+
+			COMMIT TRANSACTION;
+
+			SET @outResultCode = 0;
+		END
+
+		--Bitacora de actualizacion
+		SET @DescripcionBitacora =
+			'Documento identidad anterior: ' + ISNULL(@DocIdentAntes, '')
+			+ ', Nombre anterior: ' + ISNULL(@NombreAntes, '')
+			+ ', Puesto anterior: ' + ISNULL(@NombrePuestoAntes, '')
+			+ ', Documento identidad nuevo: ' + ISNULL(@inNuevoValorDocIdentidad, '')
+			+ ', Nombre nuevo: ' + ISNULL(@inNuevoNombre, '')
+			+ ', Puesto nuevo: ' + ISNULL(@NombreNuevoPuesto, '')
+			+ ', SaldoVacaciones: ' + ISNULL(CAST(@SaldoVacaciones AS VARCHAR(20)), '');
+
+		IF (@outResultCode = 0)
+		BEGIN
+			EXEC dbo.RegistrarBitacora
+				@inIdTipoEvento = 8
+				, @inDescripcion = @DescripcionBitacora
+				, @inIdUsuario = @inIdUsuario
+				, @inIpPostIn = @inIpPostIn
+				, @inPostTime = @inPostTime;
+		END
+		ELSE
+		BEGIN
+			SET @DescripcionBitacora = ISNULL(@DescripcionBitacora, '')
+				+ ', CodigoError: ' + CAST(@outResultCode AS VARCHAR(10))
+			EXEC dbo.RegistrarBitacora
+				@inIdTipoEvento = 7
+				, @inDescripcion = @DescripcionBitacora
+				, @inIdUsuario = @inIdUsuario
+				, @inIpPostIn = @inIpPostIn
+				, @inPostTime = @inPostTime;
+		END
+
+	END TRY
+
+	BEGIN CATCH
+
+		IF (XACT_STATE() <> 0)
+		BEGIN
+			ROLLBACK TRANSACTION;
+		END
+
+		SET @outResultCode = 50008;
+
+		--Registra error en DBError
+		INSERT INTO dbo.DBError
+		(
+			UserName
+			, Number
+			, [State]
+			, Severity
+			, Line
+			, [Procedure]
+			, [Message]
+			, [DateTime]
+		)
+		VALUES
+		(
+			SUSER_SNAME()
+			, ERROR_NUMBER()
+			, ERROR_STATE()
+			, ERROR_SEVERITY()
+			, ERROR_LINE()
+			, ERROR_PROCEDURE()
+			, ERROR_MESSAGE()
+			, GETDATE()
+		);
+
+		--Bitacora de error inesperado
+		EXEC dbo.RegistrarBitacora
+			@inIdTipoEvento = 7
+			, @inDescripcion = 'Error inesperado en actualización de empleado'
+			, @inIdUsuario = @inIdUsuario
+			, @inIpPostIn = @inIpPostIn
+			, @inPostTime = @inPostTime;
+
+	END CATCH
+
+	--Retorno
+	SELECT @outResultCode AS resultado;
+
+END;
+GO
