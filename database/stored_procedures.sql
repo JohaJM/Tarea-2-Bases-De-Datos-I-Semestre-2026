@@ -1216,3 +1216,199 @@ BEGIN
 
 END;
 GO
+
+/*
+SP: InsertarMovimiento
+¿Qué hace?: Inserta un movimiento de vacaciones
+para un empleado, valida que el saldo no quede
+negativo y actualiza el saldo.
+*/
+
+CREATE PROCEDURE [dbo].[InsertarMovimiento]
+	--Parametros de entrada
+	@inIdEmpleado INT
+	, @inIdTipoMovimiento INT
+	, @inMonto DECIMAL(10,2)
+	, @inIdUsuario INT
+	, @inIpPostIn VARCHAR(50)
+	, @inPostTime DATETIME
+
+	--Parametro de salida
+	, @outResultCode INT OUTPUT
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	--Variables
+	DECLARE @DescripcionBitacora VARCHAR(500);
+
+	DECLARE @SaldoActual DECIMAL(10,2);
+	DECLARE @NuevoSaldo DECIMAL(10,2);
+
+	DECLARE @TipoAccion VARCHAR(20);
+	DECLARE @NombreTipoMovimiento VARCHAR(50);
+
+	DECLARE @NombreEmpleado VARCHAR(100);
+	DECLARE @DocIdentidad VARCHAR(50);
+
+	--Valor por defecto de error de BD
+	SET @outResultCode = 50008;
+
+	BEGIN TRY
+
+		--Obtiene datos del empleado
+		SELECT
+			@SaldoActual = E.SaldoVacaciones
+			, @NombreEmpleado = E.Nombre
+			, @DocIdentidad = E.ValorDocumentoIdentidad
+		FROM dbo.Empleado AS E
+		WHERE (E.Id = @inIdEmpleado)
+			AND (E.EsActivo = 1);
+
+		--Obtiene tipo de movimiento
+		SELECT
+			@TipoAccion = TM.TipoAccion
+			, @NombreTipoMovimiento = TM.Nombre
+		FROM dbo.TipoMovimiento AS TM
+		WHERE (TM.Id = @inIdTipoMovimiento);
+
+		--Calcula nuevo saldo
+		IF (@TipoAccion = 'Credito')
+		BEGIN
+			SET @NuevoSaldo = @SaldoActual + @inMonto;
+		END
+		ELSE
+		BEGIN
+			SET @NuevoSaldo = @SaldoActual - @inMonto;
+		END
+
+		--Valida saldo negativo
+		IF (@NuevoSaldo < 0)
+		BEGIN
+			SET @outResultCode = 50011;
+		END
+		ELSE
+		BEGIN
+			BEGIN TRANSACTION;
+
+				--Insertar movimiento
+				INSERT INTO dbo.Movimiento
+				(
+					IdEmpleado
+					, IdTipoMovimiento
+					, Fecha
+					, Monto
+					, NuevoSaldo
+					, IdUsuario
+					, IpPostIn
+					, PostTime
+				)
+				VALUES
+				(
+					@inIdEmpleado
+					, @inIdTipoMovimiento
+					, CAST(@inPostTime AS DATE)
+					, @inMonto
+					, @NuevoSaldo
+					, @inIdUsuario
+					, @inIpPostIn
+					, @inPostTime
+				);
+
+				--Actualiza saldo del empleado
+				UPDATE dbo.Empleado
+				SET SaldoVacaciones = @NuevoSaldo
+				WHERE (Id = @inIdEmpleado);
+
+			COMMIT TRANSACTION;
+
+			SET @outResultCode = 0;
+		END
+
+		--Bitacora
+		SET @DescripcionBitacora =
+			'Documento: ' + ISNULL(@DocIdentidad, '')
+			+ ', Nombre: ' + ISNULL(@NombreEmpleado, '')
+			+ ', SaldoActual: ' + ISNULL(CAST(@SaldoActual AS VARCHAR(20)), '')
+			+ ', TipoMovimiento: ' + ISNULL(@NombreTipoMovimiento, '')
+			+ ', Monto: ' + ISNULL(CAST(@inMonto AS VARCHAR(20)), '');
+
+		IF (@outResultCode = 0)
+		BEGIN
+			--Exito
+			SET @DescripcionBitacora =
+				@DescripcionBitacora
+				+ ', NuevoSaldo: ' + ISNULL(CAST(@NuevoSaldo AS VARCHAR(20)), '');
+
+			EXEC dbo.RegistrarBitacora
+				@inIdTipoEvento = 14
+				, @inDescripcion = @DescripcionBitacora
+				, @inIdUsuario = @inIdUsuario
+				, @inIpPostIn = @inIpPostIn
+				, @inPostTime = @inPostTime;
+		END
+		ELSE
+		BEGIN
+			--Intento fallido
+			SET @DescripcionBitacora =
+				'Error: ' + CAST(@outResultCode AS VARCHAR(10))
+				+ ', ' + @DescripcionBitacora;
+
+			EXEC dbo.RegistrarBitacora
+				@inIdTipoEvento = 13
+				, @inDescripcion = @DescripcionBitacora
+				, @inIdUsuario = @inIdUsuario
+				, @inIpPostIn = @inIpPostIn
+				, @inPostTime = @inPostTime;
+		END
+
+	END TRY
+
+	BEGIN CATCH
+
+		IF (XACT_STATE() <> 0)
+		BEGIN
+			ROLLBACK TRANSACTION;
+		END
+
+		SET @outResultCode = 50008;
+
+		--Registra error en DBError
+		INSERT INTO dbo.DBError
+		(
+			UserName
+			, Number
+			, [State]
+			, Severity
+			, Line
+			, [Procedure]
+			, [Message]
+			, [DateTime]
+		)
+		VALUES
+		(
+			SUSER_SNAME()
+			, ERROR_NUMBER()
+			, ERROR_STATE()
+			, ERROR_SEVERITY()
+			, ERROR_LINE()
+			, ERROR_PROCEDURE()
+			, ERROR_MESSAGE()
+			, GETDATE()
+		);
+
+		--Bitacora error
+		EXEC dbo.RegistrarBitacora
+			@inIdTipoEvento = 13
+			, @inDescripcion = 'Error inesperado al insertar movimiento'
+			, @inIdUsuario = @inIdUsuario
+			, @inIpPostIn = @inIpPostIn
+			, @inPostTime = @inPostTime;
+
+	END CATCH
+
+	--Retorno
+	SELECT @outResultCode AS resultado;
+
+END;
+GO
