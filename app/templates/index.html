@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Empleados</title>
+    {# CSS externo compartido #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
+</head>
+<body>
+
+    {# Barra superior con usuario y logout #}
+    <div class="navbar">
+        <span>Usuario: {{ session['username'] }}</span>
+        <a href="/logout">Cerrar Sesion</a>
+    </div>
+
+    {# Titulo #}
+    <h2>Empleados</h2>
+
+    {# Mensajes flash #}
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="mensajes-flash">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {# Filtro de busqueda #}
+    <form method="GET" action="/empleados">
+        <div class="filtro-contenedor">
+            <label for="filtro">Filtro:</label>
+            <input type="text" id="filtro" name="filtro" 
+                   placeholder="nombre/identificacion"
+                   value="{{ filtro }}">
+            <button type="submit" class="btn-filtrar">Filtrar</button>
+        </div>
+    </form>
+
+    {# Tabla de empleados con scroll #}
+    <div class="tabla-contenedor">
+        <table class="tabla-empleados">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Cédula</th>
+                    <th>Puesto</th>
+                    <th>Fecha Contratación</th>
+                    <th>Saldo Vacaciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {# Loop de Jinja2, recorre la lista de empleados #}
+                {% for emp in empleados %}
+                <tr id="fila-{{ emp[0] }}"
+                    onclick="seleccionar({{ emp[0] }}, '{{ emp[1] }}', '{{ emp[2] }}')">
+                    <td>{{ emp[1] }}</td>  
+                    <td>{{ emp[2] }}</td>  
+                    <td>{{ emp[5] }}</td>  
+                    <td>{{ emp[3] }}</td>  
+                    <td>{{ emp[4] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {# Boton insertar nuevo empleado #}
+    <form method="GET" action="/insertar_empleado">
+        <button type="submit" class="btn-insertar">Insertar Nuevo Empleado</button>
+    </form>
+
+    {# Seccion de acciones, aparece cuando se selecciona un empleado #}
+    <div class="acciones-contenedor">
+
+        {# Boton Consultar-Vale#}
+        <form method="GET" action="/consultar_empleado">
+            <input type="hidden" name="id_empleado" id="id-consultar">
+            <button type="submit" class="btn-accion" id="btn-consultar" disabled>
+                Consultar
+            </button>
+        </form>
+
+        {# Boton Actualizar-Vale#}
+        <form method="GET" action="/editar_empleado">
+            <input type="hidden" name="id_empleado" id="id-editar">
+            <button type="submit" class="btn-accion" id="btn-editar" disabled>
+                Actualizar
+            </button>
+        </form>
+
+        {# Boton Eliminar-Vale#}
+        <form method="GET" action="/eliminar_empleado">
+            <input type="hidden" name="id_empleado" id="id-eliminar">
+            <button type="submit" class="btn-accion" id="btn-eliminar" disabled>
+                Eliminar
+            </button>
+        </form>
+
+        {# Movimientos boton#}
+        <form method="GET" action="/movimientos">
+            <input type="hidden" name="id_empleado" id="id-movimientos">
+            <button type="submit" class="btn-accion" id="btn-movimientos" disabled>
+                Movimientos
+            </button>
+        </form>
+
+    </div>
+
+    {# JavaScript para seleccionar empleado al hacer clic en la fila #}
+    <script>
+        function seleccionar(id, nombre, cedula) {
+
+            // Quitar resaltado de todas las filas
+            document.querySelectorAll('.tabla-empleados tbody tr')
+                    .forEach(function(fila) {
+                        fila.classList.remove('seleccionada');
+                    });
+
+            // Resaltar la fila clickeada
+            document.getElementById('fila-' + id).classList.add('seleccionada');
+
+            // Poner el id del empleado en todos los campos ocultos
+            document.getElementById('id-consultar').value = id;
+            document.getElementById('id-editar').value = id;
+            document.getElementById('id-eliminar').value = id;
+            document.getElementById('id-movimientos').value = id;
+
+            // Habilitar todos los botones
+            document.getElementById('btn-consultar').disabled = false;
+            document.getElementById('btn-editar').disabled = false;
+            document.getElementById('btn-eliminar').disabled = false;
+            document.getElementById('btn-movimientos').disabled = false;
+        }
+    </script>
+
+</body>
+</html>
