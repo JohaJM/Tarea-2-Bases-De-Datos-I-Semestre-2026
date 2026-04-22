@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Iniciar Sesion</title>
+    {# Cargo el CSS externo desde la carpeta static #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
+</head>
+<body>
+
+    {# Titulo arriba de la tarjeta #}
+    <h1>Iniciar Sesion</h1>
+
+    {# Tarjeta del formulario #}
+    <div class="tarjeta">
+
+        {# Barra azul oscuro arriba #}
+        <div class="tarjeta-header"></div>
+
+        {# Contenido del formulario #}
+        <div class="tarjeta-body">
+
+            <form method="POST" action="/">
+
+                {# Campo Usuario #}
+                <div class="campo">
+                    <label for="username">Usuario</label>
+                    <input type="text" id="username" name="username" placeholder="ejemplo1234">
+                </div>
+
+                {# Campo Contrasena #}
+                <div class="campo">
+                    <label for="password">Contrasena</label>
+                    <input type="password" id="password" name="password" placeholder="..........">
+                </div>
+
+                {# Boton submit #}
+                <div class="boton-contenedor">
+                    <button type="submit" class="boton-login">Iniciar sesion</button>
+                </div>
+
+            </form>
+
+            {# Mensajes flash de error, aparecen si el login falla #}
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="mensajes-error">
+                        {% for message in messages %}
+                            <p>{{ message }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+        </div>
+    </div>
+
+</body>
+</html>

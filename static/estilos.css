@@ -1,0 +1,309 @@
+/* Fuente y fondo general de todas las paginas */
+body {
+    font-family: 'Georgia', serif;
+    background-color: #f0f0f0;
+    margin: 0;
+    padding: 0;
+}
+
+/* Titulo principal, el que va arriba de la tarjeta */
+h1 {
+    text-align: center;
+    color: #1a237e;
+    font-size: 3em;
+    margin-top: 60px;
+    margin-bottom: 30px;
+}
+
+/* Tarjeta del formulario */
+.tarjeta {
+    background-color: #dcdcdc;
+    width: 650px;
+    margin: 0 auto;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* Barra azul oscuro de arriba de la tarjeta */
+.tarjeta-header {
+    background-color: #0d1b8e;
+    height: 70px;
+}
+
+/* Contenido dentro de la tarjeta */
+.tarjeta-body {
+    padding: 40px 60px;
+}
+
+/* Fila de cada campo: label + input en la misma linea */
+.campo {
+    display: flex;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+/* Labels de Usuario y Contrasena */
+.campo label {
+    font-weight: bold;
+    font-size: 1.1em;
+    width: 140px;
+    color: #1a1a1a;
+}
+
+/* Cajas de texto */
+.campo input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #aaa;
+    border-radius: 3px;
+    font-size: 1em;
+    background-color: white;
+}
+
+/* Contenedor del boton, centrado */
+.boton-contenedor {
+    text-align: center;
+    margin-top: 10px;
+}
+
+/* Boton Iniciar sesion */
+.boton-login {
+    background-color: #5a6478;
+    color: white;
+    border: none;
+    padding: 12px 40px;
+    font-size: 1.1em;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Mensajes de error flash */
+.mensajes-error {
+    margin-top: 20px;
+    text-align: center;
+    color: #b71c1c;
+    font-weight: bold;
+}
+
+
+/*ESTILOS PARA INDEX.HTML*/
+
+/* Barra superior con usuario y logout */
+.navbar {
+    background-color: #c8d0e8;
+    padding: 12px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 4px solid #0d1b8e;
+}
+
+.navbar span {
+    font-weight: bold;
+    color: #1a237e;
+}
+
+.navbar a {
+    color: #1a237e;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+/* Titulo de la pagina */
+h2 {
+    text-align: center;
+    color: #1a237e;
+    font-weight: bold;
+    margin-top: 30px;
+    margin-bottom: 20px;
+}
+
+/* Seccion del filtro */
+.filtro-contenedor {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 40px 20px 40px;
+}
+
+.filtro-contenedor label {
+    font-weight: bold;
+    color: #1a237e;
+}
+
+.filtro-contenedor input {
+    padding: 6px 12px;
+    border: 1px solid #aaa;
+    border-radius: 3px;
+    width: 250px;
+}
+
+.btn-filtrar {
+    background-color: #0d1b8e;
+    color: white;
+    border: none;
+    padding: 7px 20px;
+    font-weight: bold;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+/* Contenedor de la tabla con scroll */
+.tabla-contenedor {
+    margin: 0 40px;
+    max-height: 350px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+}
+
+/* Tabla de empleados */
+.tabla-empleados {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95em;
+}
+
+.tabla-empleados thead {
+    background-color: #e8e8e8;
+    position: sticky;
+    top: 0;
+}
+
+.tabla-empleados th {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #ccc;
+    font-weight: bold;
+}
+
+.tabla-empleados td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+/* Filas alternadas */
+.tabla-empleados tbody tr:nth-child(even) {
+    background-color: #f0f0f0;
+}
+
+/* Fila seleccionada */
+.tabla-empleados tbody tr.seleccionada {
+    background-color: #c8d0e8 !important;
+    cursor: pointer;
+}
+
+.tabla-empleados tbody tr {
+    cursor: pointer;
+}
+
+/* Seccion de botones abajo */
+.acciones-contenedor {
+    margin: 20px 40px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Botones de accion */
+.btn-accion {
+    background-color: #0d1b8e;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-weight: bold;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.btn-accion:disabled {
+    background-color: #aaa;
+    cursor: not-allowed;
+}
+
+/* Boton insertar */
+.btn-insertar {
+    background-color: #0d1b8e;
+    color: white;
+    border: none;
+    padding: 10px 25px;
+    font-weight: bold;
+    border-radius: 3px;
+    cursor: pointer;
+    margin: 0 40px 10px 40px;
+    display: block;
+}
+
+/* Mensajes flash */
+.mensajes-flash {
+    margin: 10px 40px;
+    color: #b71c1c;
+    font-weight: bold;
+}
+
+
+/*Para Insertar Empleado*/
+/* Contenedor del formulario de insertar/editar */
+.form-contenedor {
+    margin: 30px 60px;
+}
+
+/* Fila de cada campo del formulario */
+.form-campo {
+    display: flex;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+/* Labels del formulario */
+.form-campo label {
+    font-weight: bold;
+    color: #1a237e;
+    width: 180px;
+    font-size: 1em;
+}
+
+/* Inputs del formulario */
+.form-campo input {
+    padding: 6px 12px;
+    border: 1px solid #aaa;
+    border-radius: 3px;
+    width: 250px;
+    background-color: #e8e8e8;
+    font-size: 1em;
+}
+
+/* Dropdown de puesto */
+.form-campo select {
+    padding: 6px 12px;
+    border: 1px solid #aaa;
+    border-radius: 3px;
+    width: 250px;
+    background-color: #e8e8e8;
+    font-size: 1em;
+}
+
+/* Contenedor de botones del formulario */
+.form-botones {
+    margin-top: 10px;
+    display: flex;
+    gap: 15px;
+}
+
+/*PARA MOVIMIENTOS.HTML*/
+/* Datos del empleado arriba de la tabla de movimientos */
+.datos-empleado {
+    margin: 20px 40px;
+}
+
+.datos-empleado p {
+    margin: 4px 0;
+    font-weight: bold;
+    color: #1a237e;
+}
+
+.datos-empleado span {
+    font-weight: normal;
+    color: #1a1a1a;
+}
