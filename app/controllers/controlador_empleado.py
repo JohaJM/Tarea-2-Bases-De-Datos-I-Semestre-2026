@@ -37,3 +37,52 @@ def listar_empleados_view():
     return render_template('index.html', empleados=empleados, filtro=filtro)
 
 
+@empleado_bp.route('/insertar_empleado', methods=['GET', 'POST'])
+def insertar_empleado_view():
+
+    # Verificar que haya sesion activa
+    if ('id_usuario' not in session):
+        return redirect(url_for('auth.login_view'))
+
+    id_usuario = session['id_usuario']
+    ip         = request.remote_addr
+
+    if (request.method == 'POST'):
+        # Obtener datos del formulario
+        nombre  = request.form['nombre'].strip()
+        cedula  = request.form['cedula'].strip()
+        id_puesto = request.form['id_puesto']
+        
+        #DEBUG TEMPORAL
+        print(f"DEBUG: nombre={nombre}, cedula={cedula}, id_puesto={id_puesto}, id_usuario={session['id_usuario']}")
+
+        # Llamar al model para insertar el empleado
+        result_code = insertar_empleado(nombre, cedula, id_puesto, id_usuario, ip)
+
+        if (result_code == 0):
+            flash('Empleado insertado correctamente')
+            return redirect(url_for('empleado.listar_empleados_view'))
+        else:
+            mensaje = obtener_mensaje_error(result_code)
+            flash(mensaje)
+            return redirect(url_for('empleado.insertar_empleado_view'))
+
+    # GET: cargar puestos para el dropdown
+    puestos, _ = listar_puestos()
+    return render_template('insertar_empleado.html', puestos=puestos)
+
+#PRUEBASS*/
+@empleado_bp.route("/test")
+def test():
+    return render_template("index.html", empleados=[], filtro="")
+
+@empleado_bp.route("/test_insertar")
+def test_insertar():
+    # Puestos de prueba hardcodeados para ver el diseno
+    puestos_prueba = [
+        (1, "Cajero"),
+        (2, "Camarero"),
+        (3, "Conductor"),
+        (4, "Asistente")
+    ]
+    return render_template("insertar_empleado.html", puestos=puestos_prueba)

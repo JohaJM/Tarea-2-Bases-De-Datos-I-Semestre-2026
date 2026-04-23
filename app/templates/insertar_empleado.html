@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Insertar Empleado</title>
+    {# CSS externo compartido #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
+</head>
+<body>
+
+    {# Navbar igual que index #}
+    <div class="navbar">
+        <span>Usuario: {{ session['username'] }}</span>
+        <a href="/logout">Cerrar Sesion</a>
+    </div>
+
+    {# Titulo #}
+    <h2>Empleados</h2>
+
+    {# Mensajes flash #}
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="mensajes-flash">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {# Formulario de insercion #}
+    <form method="POST" action="/insertar_empleado">
+        <div class="form-contenedor">
+
+            {# Campo Nombre #}
+            <div class="form-campo">
+                <label for="nombre">Nombre:</label>
+                <input type="text" id="nombre" name="nombre" 
+                       placeholder="nombre del empleado">
+            </div>
+
+            {# Campo Cedula #}
+            <div class="form-campo">
+                <label for="cedula">Identificacion:</label>
+                <input type="text" id="cedula" name="cedula" 
+                       placeholder="identificacion">
+            </div>
+
+            {# Dropdown Puesto #}
+            <div class="form-campo">
+                <label for="id_puesto">Puesto:</label>
+                <select id="id_puesto" name="id_puesto">
+                    {# Jinja2 llena el dropdown con los puestos que manda Flask #}
+                    {% for puesto in puestos %}
+                        <option value="{{ puesto[0] }}">{{ puesto[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {# Botones #}
+            <div class="form-botones">
+                <button type="submit" class="btn-accion">Insertar</button>
+                <a href="/empleados" class="btn-accion" 
+                   style="text-decoration: none; padding: 10px 20px;">
+                    Cancelar
+                </a>
+            </div>
+
+        </div>
+    </form>
+
+</body>
+</html>
