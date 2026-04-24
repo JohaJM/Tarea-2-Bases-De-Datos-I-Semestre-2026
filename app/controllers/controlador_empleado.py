@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from app.model.modelo_empleado import listar_empleados, listar_puestos, insertar_empleado, obtener_mensaje_error
+from app.model.modelo_empleado import listar_empleados, listar_puestos, insertar_empleado, obtener_mensaje_error, consultar_empleado
 
 empleado_bp = Blueprint('empleado', __name__)
 
@@ -70,6 +70,36 @@ def insertar_empleado_view():
     # GET: cargar puestos para el dropdown
     puestos, _ = listar_puestos()
     return render_template('insertar_empleado.html', puestos=puestos)
+
+@empleado_bp.route('/consultar_empleado', methods=['GET'])
+def consultar_empleado_view():
+
+    # Valida sesion
+    if ('id_usuario' not in session):
+        return redirect(url_for('auth.login_view'))
+
+    id_usuario = session['id_usuario']
+    ip = request.remote_addr
+
+    # Obtiene id desde la URL
+    id_empleado = request.args.get('id_empleado')
+
+    if (not id_empleado):
+        flash('No se seleccionó ningún empleado')
+        return redirect(url_for('empleado.listar_empleados_view'))
+    id_empleado = int(id_empleado) #cambio
+    # Llama al modelo
+    empleado, result_code = consultar_empleado(id_empleado, id_usuario, ip)
+
+    if (result_code != 0):
+        mensaje = obtener_mensaje_error(result_code)
+        flash(mensaje)
+        return redirect(url_for('empleado.listar_empleados_view'))
+
+    return render_template(
+        'consultar_empleado.html',
+        empleado = empleado
+    )
 
 #PRUEBASS*/
 @empleado_bp.route("/test")
