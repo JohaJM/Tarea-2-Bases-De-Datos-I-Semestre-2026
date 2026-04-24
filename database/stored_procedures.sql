@@ -685,7 +685,7 @@ CREATE PROCEDURE [dbo].[ConsultarEmpleado]
 	, @inPostTime DATETIME
 
 	--Parametro de salida
-	, @outResultCode INT OUTPUT
+	, @outResultCode INT = 0 OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -818,7 +818,7 @@ CREATE PROCEDURE [dbo].[EliminarEmpleado]
 	, @inPostTime DATETIME
 
 	--Parametro de salida
-	, @outResultCode INT OUTPUT
+	, @outResultCode INT = 0 OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -954,7 +954,7 @@ CREATE PROCEDURE [dbo].[RegistrarIntentoEliminarEmpleado]
 	, @inPostTime DATETIME
 
 	--Parametro de salida
-	, @outResultCode INT OUTPUT
+	, @outResultCode INT = 0 OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -1054,7 +1054,7 @@ CREATE PROCEDURE [dbo].[ActualizarEmpleado]
 	, @inPostTime DATETIME
 
 	--Parametro de salida
-	, @outResultCode INT OUTPUT
+	, @outResultCode INT = 0 OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -1234,7 +1234,7 @@ CREATE PROCEDURE [dbo].[InsertarMovimiento]
 	, @inPostTime DATETIME
 
 	--Parametro de salida
-	, @outResultCode INT OUTPUT
+	, @outResultCode INT = 0 OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
