@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Movimientos de Empleado</title>
+    {# CSS externo compartido #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
+</head>
+<body>
+
+    {# Navbar #}
+    <div class="navbar">
+        <span>Usuario: {{ session['username'] }}</span>
+        <a href="/logout">Cerrar Sesion</a>
+    </div>
+
+    {# Titulo #}
+    <h2>Movimientos de Empleado</h2>
+
+    {# Mensajes flash #}
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="mensajes-flash">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {# Datos del empleado #}
+    <div class="datos-empleado">
+        <p>Nombre: <span>{{ empleado[1] }}</span></p>
+        <p>Identificacion: <span>{{ empleado[0] }}</span></p>
+        <p>Saldo actual: <span>{{ empleado[2] }}</span></p>
+    </div>
+
+    {# Tabla de movimientos con scroll #}
+    <div class="tabla-contenedor">
+        <table class="tabla-empleados">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Tipo de Movimiento</th>
+                    <th>Monto</th>
+                    <th>Nuevo Saldo</th>
+                    <th>Usuario</th>
+                    <th>IP</th>
+                    <th>Fecha/Hora Registro</th>
+                </tr>
+            </thead>
+            <tbody>
+                {# Loop Jinja2, recorre la lista de movimientos #}
+                {% for mov in movimientos %}
+                <tr>
+                    <td>{{ mov[0] }}</td>
+                    <td>{{ mov[1] }}</td>
+                    <td>{{ mov[2] }}</td>
+                    <td>{{ mov[3] }}</td>
+                    <td>{{ mov[4] }}</td>
+                    <td>{{ mov[5] }}</td>
+                    <td>{{ mov[6] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {# Botones abajo #}
+    <div class="acciones-contenedor">
+
+        {# Boton volver al index #}
+        <a href="/empleados" class="btn-accion"
+           style="text-decoration: none; padding: 10px 20px;">
+            Volver
+        </a>
+
+        {# Boton insertar movimiento - le toca a Valeria #}
+        <form method="GET" action="/insertar_movimiento">
+            <input type="hidden" name="id_empleado" value="{{ id_empleado }}">
+            <button type="submit" class="btn-accion">Insertar Movimiento</button>
+        </form>
+
+    </div>
+
+</body>
+</html>
