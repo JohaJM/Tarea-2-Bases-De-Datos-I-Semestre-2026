@@ -1,5 +1,6 @@
 import pyodbc
 from app.db import get_db_connection
+from datetime import datetime
 
 def listar_empleados(filtro_nombre, filtro_cedula, id_usuario, ip):
     conn = get_db_connection()
@@ -52,42 +53,7 @@ def listar_puestos():
 
     return puestos, result_code
 
-"""
-Funcion que tenia antes, la quite porque parece
-que me da error al insertar un nuevo empleado, pero la deje comentada por si se quiere revisar el error despues.
-def insertar_empleado(nombre, cedula, id_puesto, id_usuario, ip):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    try:
-        # Llamar al SP de insercion con los datos del formulario
-        cursor.execute(
-            "EXEC dbo.InsertarEmpleado @inNombre=?, @inValorDocumentoIdentidad=?, @inIdPuesto=?, @inIdUsuario=?, @inIP=?",
-            nombre, cedula, id_puesto, id_usuario, ip
-        )
-
-        # Leer resultsets hasta encontrar el del SP (puede haber uno de bitacora primero)
-        resultado = cursor.fetchone()
-
-        while (resultado is not None and len(resultado) == 1 and resultado[0] == 0):
-            cursor.nextset()
-            resultado = cursor.fetchone()
-
-        if (resultado is not None):
-            result_code = resultado[0]
-        else:
-            result_code = 0
-
-        conn.commit()
-    except pyodbc.Error:
-        result_code = 50008
-
-    finally:
-        conn.close()
-
-    return result_code"""
-    
-    
+     
 def insertar_empleado(nombre, cedula, id_puesto, id_usuario, ip):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -120,7 +86,8 @@ def insertar_empleado(nombre, cedula, id_puesto, id_usuario, ip):
 
     return result_code
 
-# Esta funcion se conecta con el SP sp_ObtenerMensajeError para traducir los codigos de error a mensajes.
+# Esta funcion se conecta con el SP ObtenerMensajeError
+# para traducir los codigos de error a mensajes.
 def obtener_mensaje_error(codigo):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -147,3 +114,56 @@ def obtener_mensaje_error(codigo):
         conn.close()
 
     return descripcion
+
+# Esta funcion se conecta con el SP ConsultarEmpleado
+# para obtener los datos de un empleado especifico.
+def consultar_empleado(id_empleado, id_usuario, ip):
+    # Abre la conexión a la base de datos
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Ejecuta el SP consultarEmpleado
+        cursor.execute(
+            """
+            EXEC dbo.ConsultarEmpleado
+                @inIdEmpleado=?,
+                @inIdUsuario=?,
+                @inIpPostIn=?,
+                @inPostTime=?
+            """,
+            id_empleado,
+            id_usuario,
+            ip,
+            datetime.now()
+        )
+
+        # Primer resultset devuelve los datos del empleado o None si no existe
+        columna = cursor.fetchone()
+        if columna:
+            empleado = (
+                columna[0],
+                columna[1],
+                columna[2],
+                columna[3]
+            )
+        else:
+            empleado = None
+
+        # Pasa al siguiente resultset para obtener el código de resultado
+        cursor.nextset()
+        columna_codigo = cursor.fetchone()
+        result_code = columna_codigo[0] if columna_codigo else 50008
+
+    except pyodbc.Error as e:
+        # Si algo falla con la BD, devuelve su respectivo codigo de error
+        print(f"ERROR consultar_empleado: {e}")
+        empleado = None
+        result_code = 50008
+
+    finally:
+        # Cierra la conexión
+        conn.close()
+
+    return empleado, result_code
+
