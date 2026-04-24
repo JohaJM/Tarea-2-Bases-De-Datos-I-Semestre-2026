@@ -1720,3 +1720,60 @@ BEGIN
 
 END
 GO
+/*
+    ListarPuestos
+    Recibe:  nada
+    Retorna: Lista de todos los puestos ordenados alfabeticamente
+    
+    Se usa para poblar el dropdown de puestos
+    en el formulario de insertar y editar empleado.
+*/
+CREATE PROCEDURE dbo.ListarPuestos
+AS
+BEGIN
+    SET NOCOUNT ON
+    DECLARE @outResultCode INT = 0
+
+    BEGIN TRY
+
+        SELECT
+            P.id
+        ,   P.Nombre
+        ,   P.SalarioxHora
+        FROM dbo.Puesto AS P
+        ORDER BY P.Nombre ASC
+
+    END TRY
+    BEGIN CATCH
+
+        SET @outResultCode = 50008
+
+        INSERT INTO dbo.DBError
+        (
+            UserName
+        ,   Number
+        ,   [State]
+        ,   Severity
+        ,   Line
+        ,   [Procedure]
+        ,   [Message]
+        ,   [DateTime]
+        )
+        VALUES
+        (
+            SUSER_NAME()
+        ,   ERROR_NUMBER()
+        ,   ERROR_STATE()
+        ,   ERROR_SEVERITY()
+        ,   ERROR_LINE()
+        ,   ERROR_PROCEDURE()
+        ,   ERROR_MESSAGE()
+        ,   GETDATE()
+        )
+
+    END CATCH
+
+    SELECT @outResultCode AS resultCode
+
+END
+GO
