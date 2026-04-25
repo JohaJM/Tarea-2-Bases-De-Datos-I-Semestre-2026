@@ -2,7 +2,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from app.model.modelo_empleado import (
     listar_empleados, listar_puestos,
     insertar_empleado, obtener_mensaje_error,
-    consultar_empleado, actualizar_empleado)
+    consultar_empleado, actualizar_empleado,
+    registrar_intento_eliminar, eliminar_empleado)
 
 empleado_bp = Blueprint('empleado', __name__)
 
@@ -200,6 +201,77 @@ def editar_empleado_view_post():
             'empleado.editar_empleado_view_get',
             id_empleado = id_empleado
         ))
+
+@empleado_bp.route('/eliminar_empleado', methods=['GET'])
+def eliminar_empleado_view():
+
+    # Valida sesion
+    if ('id_usuario' not in session):
+        return redirect(url_for('auth.login_view'))
+
+    id_usuario = session['id_usuario']
+    ip = request.remote_addr
+
+    # Obtiene id desde la URL
+    id_empleado = request.args.get('id_empleado')
+
+    if (not id_empleado):
+        flash('No se seleccionó ningún empleado')
+        return redirect(url_for('empleado.listar_empleados_view'))
+
+    id_empleado = int(id_empleado)
+
+    # Registra el intento de borrado en bitacora (evento 9)
+    result_code = registrar_intento_eliminar(id_empleado, id_usuario, ip)
+
+    if (result_code != 0):
+        mensaje = obtener_mensaje_error(result_code)
+        flash(mensaje)
+        return redirect(url_for('empleado.listar_empleados_view'))
+
+    # Consulta los datos del empleado para mostrarlos
+    empleado, result_code = consultar_empleado(id_empleado, id_usuario, ip)
+
+    if (result_code != 0):
+        mensaje = obtener_mensaje_error(result_code)
+        flash(mensaje)
+        return redirect(url_for('empleado.listar_empleados_view'))
+
+    return render_template(
+        'eliminar_empleado.html',
+        empleado    = empleado,
+        id_empleado = id_empleado
+    )
+
+
+@empleado_bp.route('/confirmar_eliminar_empleado', methods=['POST'])
+def confirmar_eliminar_empleado_view():
+
+    # Valida sesion
+    if ('id_usuario' not in session):
+        return redirect(url_for('auth.login_view'))
+
+    id_usuario = session['id_usuario']
+    ip = request.remote_addr
+
+    id_empleado = request.form.get('id_empleado')
+
+    if (not id_empleado):
+        flash('No se seleccionó ningún empleado')
+        return redirect(url_for('empleado.listar_empleados_view'))
+
+    id_empleado = int(id_empleado)
+
+    # Llama al modelo para hacer el borrado logico
+    result_code = eliminar_empleado(id_empleado, id_usuario, ip)
+
+    if (result_code == 0):
+        flash('Empleado eliminado correctamente')
+    else:
+        mensaje = obtener_mensaje_error(result_code)
+        flash(mensaje)
+
+    return redirect(url_for('empleado.listar_empleados_view'))
 
 #PRUEBASS*/
 @empleado_bp.route("/test")

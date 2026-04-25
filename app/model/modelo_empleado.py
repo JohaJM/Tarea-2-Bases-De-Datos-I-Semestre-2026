@@ -212,3 +212,70 @@ def actualizar_empleado(
         conn.close()
 
     return result_code
+
+# Estas funciones se conectan con los SP RegistrarIntentoEliminarEmpleado
+# y EliminarEmpleado para registrar los instentos de eliminacion
+# y borrado logico de un empleado.
+def registrar_intento_eliminar(id_empleado, id_usuario, ip):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(
+            """
+            EXEC dbo.RegistrarIntentoEliminarEmpleado
+                @inIdEmpleado  = ?,
+                @inIdUsuario   = ?,
+                @inIpPostIn    = ?,
+                @inPostTime    = ?
+            """,
+            id_empleado,
+            id_usuario,
+            ip,
+            datetime.now()
+        )
+
+        columna_resultado = cursor.fetchone()
+        result_code = columna_resultado[0] if columna_resultado else 50008
+
+    except pyodbc.Error as e:
+        print(f"ERROR registrar_intento_eliminar: {e}")
+        result_code = 50008
+
+    finally:
+        conn.close()
+
+    return result_code
+
+
+def eliminar_empleado(id_empleado, id_usuario, ip):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(
+            """
+            EXEC dbo.EliminarEmpleado
+                @inIdEmpleado  = ?,
+                @inIdUsuario   = ?,
+                @inIpPostIn    = ?,
+                @inPostTime    = ?
+            """,
+            id_empleado,
+            id_usuario,
+            ip,
+            datetime.now()
+        )
+
+        columna_resultado = cursor.fetchone()
+        result_code = columna_resultado[0] if columna_resultado else 50008
+        conn.commit()
+
+    except pyodbc.Error as e:
+        print(f"ERROR eliminar_empleado: {e}")
+        result_code = 50008
+
+    finally:
+        conn.close()
+
+    return result_code
