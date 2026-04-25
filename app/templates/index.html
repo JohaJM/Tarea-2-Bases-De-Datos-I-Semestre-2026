@@ -84,7 +84,7 @@
         </form>
 
         {# Boton Actualizar-Vale#}
-        <form method="GET" action="/editar_empleado">
+        <form method="GET" action="{{ url_for('empleado.editar_empleado_view_get') }}">
             <input type="hidden" name="id_empleado" id="id-editar">
             <button type="submit" class="btn-accion" id="btn-editar" disabled>
                 Actualizar
