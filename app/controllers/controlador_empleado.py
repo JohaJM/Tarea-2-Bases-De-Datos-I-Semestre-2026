@@ -1,5 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from app.model.modelo_empleado import listar_empleados, listar_puestos, insertar_empleado, obtener_mensaje_error, consultar_empleado
+from app.model.modelo_empleado import (
+    listar_empleados, listar_puestos,
+    insertar_empleado, obtener_mensaje_error,
+    consultar_empleado, actualizar_empleado)
 
 empleado_bp = Blueprint('empleado', __name__)
 
@@ -100,6 +103,103 @@ def consultar_empleado_view():
         'consultar_empleado.html',
         empleado = empleado
     )
+
+@empleado_bp.route('/editar_empleado', methods=['GET'])
+def editar_empleado_view_get():
+
+    # Valida sesion activa
+    if ('id_usuario' not in session):
+        return redirect(url_for('auth.login_view'))
+
+    id_usuario = session['id_usuario']
+    ip         = request.remote_addr
+
+    # Obtiene id del empleado desde la URL (viene del boton Actualizar en index)
+    id_empleado = request.args.get('id_empleado')
+
+    if (not id_empleado):
+        flash('No se seleccionó ningún empleado')
+        return redirect(url_for('empleado.listar_empleados_view'))
+
+    id_empleado = int(id_empleado)
+
+    # Consulta los datos actuales del empleado para prellenar el formulario
+    empleado, result_code = consultar_empleado(id_empleado, id_usuario, ip)
+
+    if (result_code != 0):
+        mensaje = obtener_mensaje_error(result_code)
+        flash(mensaje)
+        return redirect(url_for('empleado.listar_empleados_view'))
+
+    # Carga puestos para el dropdown
+    puestos, _ = listar_puestos()
+
+    return render_template(
+        'editar_empleado.html',
+        empleado    = empleado,
+        puestos     = puestos,
+        id_empleado = id_empleado
+    )
+
+@empleado_bp.route('/editar_empleado', methods=['POST'])
+def editar_empleado_view_post():
+
+    # Valida sesion activa
+    if ('id_usuario' not in session):
+        return redirect(url_for('auth.login_view'))
+
+    id_usuario = session['id_usuario']
+    ip = request.remote_addr
+
+    # Obtiene datos del formulario
+    id_empleado         = request.form.get('id_empleado')
+    nuevo_doc_identidad = request.form.get('cedula', '').strip()
+    nuevo_nombre        = request.form.get('nombre', '').strip()
+    nuevo_id_puesto     = request.form.get('id_puesto')
+
+    if (not id_empleado):
+        flash('No se seleccionó ningún empleado')
+        return redirect(url_for('empleado.listar_empleados_view'))
+
+    id_empleado = int(id_empleado)
+
+    # Validaciones en capa logica (R3/R4)
+    if (not nuevo_nombre.replace(' ', '').isalpha()):
+        mensaje = obtener_mensaje_error(50009)
+        flash(mensaje)
+        return redirect(url_for(
+            'empleado.editar_empleado_view_get',
+            id_empleado = id_empleado
+        ))
+
+    if (not nuevo_doc_identidad.replace(' ', '').isalnum()):
+        mensaje = obtener_mensaje_error(50010)
+        flash(mensaje)
+        return redirect(url_for(
+            'empleado.editar_empleado_view_get',
+            id_empleado = id_empleado
+        ))
+
+    # Llama al modelo para ejecutar el SP
+    result_code = actualizar_empleado(
+        id_empleado,
+        nuevo_doc_identidad,
+        nuevo_nombre,
+        nuevo_id_puesto,
+        id_usuario,
+        ip
+    )
+
+    if (result_code == 0):
+        flash('Empleado actualizado correctamente')
+        return redirect(url_for('empleado.listar_empleados_view'))
+    else:
+        mensaje = obtener_mensaje_error(result_code)
+        flash(mensaje)
+        return redirect(url_for(
+            'empleado.editar_empleado_view_get',
+            id_empleado = id_empleado
+        ))
 
 #PRUEBASS*/
 @empleado_bp.route("/test")
