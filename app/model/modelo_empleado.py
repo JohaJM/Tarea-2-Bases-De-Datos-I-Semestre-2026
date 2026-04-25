@@ -167,3 +167,48 @@ def consultar_empleado(id_empleado, id_usuario, ip):
 
     return empleado, result_code
 
+# Esta funcion se conecta con el SP ActualizarEmpleado
+# para actualizar los datos de un empleado especifico.
+def actualizar_empleado(
+        id_empleado, nuevo_doc_identidad,
+        nuevo_nombre, nuevo_id_puesto,
+        id_usuario, ip
+    ):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(
+            """
+            EXEC dbo.ActualizarEmpleado
+                @inIdEmpleado               = ?,
+                @inNuevoValorDocIdentidad   = ?,
+                @inNuevoNombre              = ?,
+                @inNuevoIdPuesto            = ?,
+                @inIdUsuario                = ?,
+                @inIpPostIn                 = ?,
+                @inPostTime                 = ?
+            """,
+            id_empleado,
+            nuevo_doc_identidad,
+            nuevo_nombre,
+            nuevo_id_puesto,
+            id_usuario,
+            ip,
+            datetime.now()
+        )
+
+        # Lee el resultset con el codigo de resultado
+        columna_resultado = cursor.fetchone()
+        result_code = columna_resultado[0] if columna_resultado else 50008
+
+        conn.commit()
+
+    except pyodbc.Error as e:
+        print(f"ERROR actualizar_empleado: {e}")
+        result_code = 50008
+
+    finally:
+        conn.close()
+
+    return result_code
