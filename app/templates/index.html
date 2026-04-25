@@ -76,7 +76,7 @@
     <div class="acciones-contenedor">
 
         {# Boton Consultar-Vale#}
-        <form method="GET" action="/consultar_empleado">
+        <form method="GET" action="{{ url_for('empleado.consultar_empleado_view') }}">
             <input type="hidden" name="id_empleado" id="id-consultar">
             <button type="submit" class="btn-accion" id="btn-consultar" disabled>
                 Consultar
@@ -99,16 +99,15 @@
             </button>
         </form>
 
-        {# Movimientos boton#}
+	    {# Movimientos boton#}
         <form method="GET" action="/movimientos">
             <input type="hidden" name="id_empleado" id="id-movimientos">
             <button type="submit" class="btn-accion" id="btn-movimientos" disabled>
                 Movimientos
             </button>
         </form>
-
     </div>
-
+    
     {# JavaScript para seleccionar empleado al hacer clic en la fila #}
     <script>
         function seleccionar(id, nombre, cedula) {
