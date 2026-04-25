@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Consultar Empleado</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
+</head>
+<body>
+
+    {# Navbar igual que el resto de vistas #}
+    <div class="navbar">
+        <span>Usuario: {{ session['username'] }}</span>
+        <a href="{{ url_for('auth.logout_view') }}">Cerrar Sesion</a>
+    </div>
+
+    <h2>Consulta de Empleado</h2>
+
+    {# Mensajes flash #}
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="mensajes-flash">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {# Tarjeta con los datos del empleado #}
+    <div class="form-contenedor">
+
+        <div class="form-campo">
+            <label>Nombre:</label>
+            <input type="text" value="{{ empleado[1] }}" disabled>
+        </div>
+
+        <div class="form-campo">
+            <label>Identificación:</label>
+            <input type="text" value="{{ empleado[0] }}" disabled>
+        </div>
+
+        <div class="form-campo">
+            <label>Puesto:</label>
+            <input type="text" value="{{ empleado[2] }}" disabled>
+        </div>
+
+        <div class="form-campo">
+            <label>Saldo de vacaciones:</label>
+            <input type="text" value="{{ empleado[3] }}" disabled>
+        </div>
+
+        <div class="form-botones">
+            <a href="{{ url_for('empleado.listar_empleados_view') }}" 
+               class="btn-accion"
+               style="text-decoration: none; padding: 10px 20px;">
+                Volver
+            </a>
+        </div>
+
+    </div>
+
+</body>
+</html>
