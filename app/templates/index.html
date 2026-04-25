@@ -92,7 +92,7 @@
         </form>
 
         {# Boton Eliminar-Vale#}
-        <form method="GET" action="/eliminar_empleado">
+        <form method="GET" action="{{ url_for('empleado.eliminar_empleado_view') }}">
             <input type="hidden" name="id_empleado" id="id-eliminar">
             <button type="submit" class="btn-accion" id="btn-eliminar" disabled>
                 Eliminar

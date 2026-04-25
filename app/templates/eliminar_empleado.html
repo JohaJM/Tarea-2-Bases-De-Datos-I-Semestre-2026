@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Eliminar Empleado</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
+</head>
+<body>
+
+    <div class="navbar">
+        <span>Usuario: {{ session['username'] }}</span>
+        <a href="/logout">Cerrar Sesion</a>
+    </div>
+
+    <h2>Eliminar Empleado</h2>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="mensajes-flash">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="form-contenedor">
+
+        {# Datos del empleado a eliminar #}
+        <div class="datos-empleado" style="margin-bottom: 30px;">
+            <p>Identificacion: <span>{{ empleado[0] }}</span></p>
+            <p>Nombre: <span>{{ empleado[1] }}</span></p>
+            <p>Puesto: <span>{{ empleado[2] }}</span></p>
+            <p>Saldo Vacaciones: <span>{{ empleado[3] }}</span></p>
+        </div>
+
+        {# Mensaje de confirmacion #}
+        <p style="font-weight: bold; color: #b71c1c; margin-bottom: 25px;">
+            ¿Está seguro de eliminar este empleado?
+        </p>
+
+        {# Boton Confirmar: hace POST con el id oculto #}
+        <form method="POST" action="/confirmar_eliminar_empleado"
+              style="display: inline;">
+            <input type="hidden" name="id_empleado" value="{{ id_empleado }}">
+            <button type="submit" class="btn-accion"
+                    style="background-color: #b71c1c;">
+                Eliminar
+            </button>
+        </form>
+
+        {# Boton Cancelar: vuelve al listado sin hacer nada #}
+        <a href="/empleados" class="btn-accion"
+           style="text-decoration: none; padding: 10px 20px; margin-left: 10px;">
+            Cancelar
+        </a>
+
+    </div>
+
+</body>
+</html>
