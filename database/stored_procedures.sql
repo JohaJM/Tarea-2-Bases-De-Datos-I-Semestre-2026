@@ -1507,7 +1507,7 @@ BEGIN
             /*
                 Paso 5: Insertar Errores (seccion de Valeria).
                 Nodo en XML: /Datos/Error/error
-		El id viene definido en el XML, por eso se inserta explicitamente.
+		        El id viene definido en el XML, por eso se inserta explicitamente.
             */
 
             INSERT INTO dbo.Error
@@ -1776,4 +1776,53 @@ BEGIN
     SELECT @outResultCode AS resultCode
 
 END
+GO
+
+CREATE PROCEDURE dbo.ListarTiposMovimiento
+AS
+BEGIN
+    SET NOCOUNT ON
+    DECLARE @outResultCode INT = 0
+
+    BEGIN TRY
+
+        SELECT
+            TM.id
+        ,   TM.Nombre
+        FROM dbo.TipoMovimiento AS TM
+        ORDER BY TM.Nombre ASC
+
+    END TRY
+    BEGIN CATCH
+
+        SET @outResultCode = 50008
+
+        INSERT INTO dbo.DBError
+        (
+            UserName
+        ,   Number
+        ,   [State]
+        ,   Severity
+        ,   Line
+        ,   [Procedure]
+        ,   [Message]
+        ,   [DateTime]
+        )
+        VALUES
+        (
+            SUSER_NAME()
+        ,   ERROR_NUMBER()
+        ,   ERROR_STATE()
+        ,   ERROR_SEVERITY()
+        ,   ERROR_LINE()
+        ,   ERROR_PROCEDURE()
+        ,   ERROR_MESSAGE()
+        ,   GETDATE()
+        )
+
+    END CATCH
+
+    SELECT @outResultCode AS resultCode
+
+END;
 GO
