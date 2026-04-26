@@ -76,7 +76,7 @@
         </a>
 
         {# Boton insertar movimiento - le toca a Valeria #}
-        <form method="GET" action="/insertar_movimiento">
+        <form method="GET" action="{{ url_for('movimiento.insertar_movimiento_view') }}">
             <input type="hidden" name="id_empleado" value="{{ id_empleado }}">
             <button type="submit" class="btn-accion">Insertar Movimiento</button>
         </form>
