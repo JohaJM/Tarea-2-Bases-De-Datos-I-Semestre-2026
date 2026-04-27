@@ -26,6 +26,8 @@ def login(username, password, ip):
         result_code  = resultado[0]
         id_usuario   = resultado[1]
         username_out = resultado[2]
+        
+        conn.commit()
 
     except pyodbc.Error:
         # Si falla la conexion o la ejecucion, se retorna error de BD
@@ -55,6 +57,7 @@ def logout(id_usuario, ip):
         # El SP devuelve solo el resultCode
         resultado   = cursor.fetchone()
         result_code = resultado[0]
+        conn.commit()
         
 
 

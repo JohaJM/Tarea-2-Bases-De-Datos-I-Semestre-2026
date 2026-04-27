@@ -19,6 +19,7 @@ def listar_empleados(filtro_nombre, filtro_cedula, id_usuario, ip):
         # Saltar al siguiente resultset para leer el resultCode
         cursor.nextset()
         result_code = cursor.fetchone()[0]
+        conn.commit()
 
     except pyodbc.Error:
         # Si falla la conexion o ejecucion, retornar lista vacia y error
