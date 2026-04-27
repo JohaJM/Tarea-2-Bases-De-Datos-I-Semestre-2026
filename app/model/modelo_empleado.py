@@ -155,6 +155,7 @@ def consultar_empleado(id_empleado, id_usuario, ip):
         cursor.nextset()
         columna_codigo = cursor.fetchone()
         result_code = columna_codigo[0] if columna_codigo else 50008
+        conn.commit()
 
     except pyodbc.Error as e:
         # Si algo falla con la BD, devuelve su respectivo codigo de error
@@ -199,9 +200,16 @@ def actualizar_empleado(
             datetime.now()
         )
 
-        # Lee el resultset con el codigo de resultado
-        columna_resultado = cursor.fetchone()
-        result_code = columna_resultado[0] if columna_resultado else 50008
+        # Avanza por todos los resultsets intermedios (de SPs internos
+        # como RegistrarBitacora) hasta llegar al último, que es
+        # el SELECT @outResultCode del SP principal.
+        result_code = 50008
+        while True:
+            columna = cursor.fetchone()
+            if columna is not None:
+                result_code = columna[0]
+            if not cursor.nextset():
+                break
 
         conn.commit()
 
@@ -238,6 +246,7 @@ def registrar_intento_eliminar(id_empleado, id_usuario, ip):
 
         columna_resultado = cursor.fetchone()
         result_code = columna_resultado[0] if columna_resultado else 50008
+        conn.commit()
 
     except pyodbc.Error as e:
         print(f"ERROR registrar_intento_eliminar: {e}")
