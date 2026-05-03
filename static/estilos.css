@@ -307,3 +307,8 @@ h2 {
     font-weight: normal;
     color: #1a1a1a;
 }
+
+.boton-login:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

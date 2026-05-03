@@ -310,12 +310,21 @@ BEGIN
         )
         BEGIN
             SET @outResultCode = 50002
+            /*
+                Obtener el id real del usuario para registrarlo
+                correctamente en la bitacora, ya que el username
+                si existe en este punto
+            */
+
+            SELECT @idUsuario = U.id
+            FROM dbo.Usuario AS U
+            WHERE (U.Username = @inUsername)
 
             /* Login no exitoso: Evento 2 - password incorrecto*/
             EXEC dbo.RegistrarBitacora
                 @inIdTipoEvento = 2
-            ,   @inDescripcion  = 'Password incorrecto'
-            ,   @inIdUsuario    = 0
+            ,   @inDescripcion  = @desc
+            ,   @inIdUsuario    = @idUsuario 
             ,   @inIpPostIn     = @inIP
             ,   @inPostTime     = @ahora
 
@@ -1413,313 +1422,6 @@ BEGIN
 END;
 GO
 
-
-/*
-    CargarDatos
-    Recibe:  @inXML- XML completo con todos los datos de prueba
-    Retorna: @outResultCode: 0 si exitoso, >50000 si hubo error
-    
-    Carga todos los datos de prueba en una sola transaccion.
-    Si algo falla en cualquier INSERT, se revierte todo (todo o nada).
-    Este SP se ejecuta una sola vez para poblar la BD con datos iniciales.
-    Nota: Vale debe agregar las secciones de TipoEvento y Error
-          en los comentarios marcados antes de ejecutar.
-*/
-CREATE PROCEDURE dbo.CargarDatos
-    @inXML XML
-AS
-BEGIN
-    SET NOCOUNT ON
-    DECLARE @outResultCode INT = 0
-
-    BEGIN TRY
-
-        BEGIN TRANSACTION
-
-            /*
-                Paso 1: Insertar Puestos.
-                nodes() navega hasta cada nodo <Puesto> dentro del XML.
-                value() extrae el valor de cada atributo del nodo.
-                Puesto no tiene dependencias, por eso se inserta primero.
-            */
-            INSERT INTO dbo.Puesto
-            (
-                Nombre
-            ,   SalarioxHora
-            )
-            SELECT
-                P.value('@Nombre',       'VARCHAR(50)')
-            ,   P.value('@SalarioxHora', 'MONEY')
-            FROM @inXML.nodes('/Datos/Puestos/Puesto') AS T(P)
-
-            /*
-                Paso 2: Insertar TiposMovimiento.
-                El id viene dado en el XML,
-                por eso se inserta explicitamente en lugar de dejarlo
-                como IDENTITY. Todos los equipos tendran los mismos ids.
-            */
-            INSERT INTO dbo.TipoMovimiento
-            (
-                id
-            ,   Nombre
-            ,   TipoAccion
-            )
-            SELECT
-                TM.value('@Id',         'INT')
-            ,   TM.value('@Nombre',     'VARCHAR(50)')
-            ,   TM.value('@TipoAccion', 'VARCHAR(20)')
-            FROM @inXML.nodes('/Datos/TiposMovimientos/TipoMovimiento') AS T(TM)
-
-            /*
-                Paso 3: Insertar TipoEvento (seccion de Valeria).
-                Nodo en XML: /Datos/TiposEvento/TipoEvento
-                El id viene definido en el XML, por eso se inserta explicitamente.
-            */
-
-            INSERT INTO dbo.TipoEvento
-            (
-                id
-            ,   Nombre
-            )
-            SELECT
-                TE.value('@Id',     'INT')
-            ,   TE.value('@Nombre', 'VARCHAR(100)')
-            FROM @inXML.nodes('/Datos/TiposEvento/TipoEvento') AS T(TE)
-
-            /*
-                Paso 4: Insertar Usuarios.
-                El id viene dado en el XML igual que TipoMovimiento,
-                para garantizar que todos los equipos tengan los mismos ids
-                y los movimientos del XML hagan referencia correctamente.
-            */
-            INSERT INTO dbo.Usuario
-            (
-                id
-            ,   Username
-            ,   Password
-            )
-            SELECT
-                U.value('@Id',     'INT')
-            ,   U.value('@Nombre', 'VARCHAR(50)')
-            ,   U.value('@Pass',   'VARCHAR(50)')
-            FROM @inXML.nodes('/Datos/Usuarios/usuario') AS T(U)
-
-            /*
-                Paso 5: Insertar Errores (seccion de Valeria).
-                Nodo en XML: /Datos/Error/error
-		        El id viene definido en el XML, por eso se inserta explicitamente.
-            */
-
-            INSERT INTO dbo.Error
-            (
-                Codigo
-            ,   Descripcion
-            )
-            SELECT
-                E.value('@Codigo',      'INT')
-            ,   E.value('@Descripcion', 'VARCHAR(500)')
-            FROM @inXML.nodes('/Datos/Error/error') AS T(E)
-
-            /*
-                Paso 6: Insertar Empleados.
-                El XML trae el nombre del puesto (ej: "Camarero"), no el id.
-                Se hace un lookup: se busca el id del puesto por su nombre
-                en la tabla Puesto que ya fue insertada en el paso 1.
-                SaldoVacaciones inicia en 0 y se actualiza en el paso 8
-                cuando se procesen los movimientos.
-            */
-            INSERT INTO dbo.Empleado
-            (
-                idPuesto
-            ,   ValorDocumentoIdentidad
-            ,   Nombre
-            ,   FechaContratacion
-            ,   SaldoVacaciones
-            ,   EsActivo
-            )
-            SELECT
-                /*
-                    Lookup de Puesto: el XML trae "Camarero",
-                    se busca el id correspondiente en dbo.Puesto.
-                */
-                (SELECT P.id FROM dbo.Puesto AS P WHERE (P.Nombre = E.value('@Puesto', 'VARCHAR(50)')))
-            ,   E.value('@ValorDocumentoIdentidad', 'VARCHAR(50)')
-            ,   E.value('@Nombre',                  'VARCHAR(100)')
-            ,   E.value('@FechaContratacion',        'DATE')
-            ,   0   /* SaldoVacaciones inicia en 0, se actualiza en paso 8 */
-            ,   1   /* EsActivo = 1, todos los empleados cargados estan activos */
-            FROM @inXML.nodes('/Datos/Empleados/empleado') AS T(E)
-
-            /*
-                Paso 7: Insertar Movimientos.
-                El XML trae nombres en lugar de ids para tres campos:
-                  - ValorDocId : se busca el id del empleado
-                  - IdTipoMovimiento: se busca el id del tipo de movimiento
-                  - PostByUser: se busca el id del usuario
-
-                Se hacen tres lookups en el SELECT para resolver cada uno.
-                NuevoSaldo se inserta en 0 temporalmente y se calcula
-                correctamente en el paso 8B.
-            */
-            INSERT INTO dbo.Movimiento
-            (
-                IdEmpleado
-            ,   IdTipoMovimiento
-            ,   Fecha
-            ,   Monto
-            ,   NuevoSaldo
-            ,   IdUsuario
-            ,   IpPostIn
-            ,   PostTime
-            )
-            SELECT
-                /*
-                    Lookup de Empleado: el XML trae el ValorDocumentoIdentidad,
-                    se busca el id del empleado correspondiente en dbo.Empleado.
-                */
-                (SELECT E.id FROM dbo.Empleado AS E WHERE (E.ValorDocumentoIdentidad = M.value('@ValorDocId', 'VARCHAR(50)')))
-                /*
-                    Lookup de TipoMovimiento: el XML trae "Venta de vacaciones",
-                    se busca el id correspondiente en dbo.TipoMovimiento.
-                */
-            ,   (SELECT TM.id FROM dbo.TipoMovimiento AS TM WHERE (TM.Nombre = M.value('@IdTipoMovimiento', 'VARCHAR(100)')))
-            ,   M.value('@Fecha',    'DATE')
-            ,   M.value('@Monto',    'DECIMAL(10,2)')
-            ,   0   /* NuevoSaldo temporal, se calcula correctamente en paso 8B */
-                /*
-                    Lookup de Usuario: el XML trae "hardingmicheal",
-                    se busca el id correspondiente en dbo.Usuario.
-                */
-            ,   (SELECT U.id FROM dbo.Usuario AS U WHERE (U.Username = M.value('@PostByUser', 'VARCHAR(100)')))
-            ,   M.value('@PostInIP', 'VARCHAR(50)')
-            ,   M.value('@PostTime', 'DATETIME')
-            FROM @inXML.nodes('/Datos/Movimientos/movimiento') AS T(M)
-                       /*
-                Paso 8A: Actualizar SaldoVacaciones del empleado.
-                Se calcula el saldo total de cada empleado agrupando
-                todos sus movimientos en una subconsulta, y se actualiza
-                de una sola vez. Esto evita que el UPDATE se aplique
-                multiples veces si el empleado tiene varios movimientos.
-            */
-            UPDATE dbo.Empleado
-            SET SaldoVacaciones = V.SaldoCalculado
-            FROM dbo.Empleado AS E
-            INNER JOIN
-                (
-                    /*
-                        Subconsulta: agrupa todos los movimientos por empleado
-                        y calcula el saldo total con signo segun TipoAccion.
-                    */
-                    SELECT
-                        M.IdEmpleado
-                    ,   SUM(
-                            CASE
-                                WHEN TM.TipoAccion = 'Credito' THEN  M.Monto
-                                ELSE                                 -M.Monto
-                            END
-                        ) AS SaldoCalculado
-                    FROM dbo.Movimiento AS M
-                    INNER JOIN dbo.TipoMovimiento AS TM ON (TM.id = M.IdTipoMovimiento)
-                    GROUP BY M.IdEmpleado
-                ) AS V ON (V.IdEmpleado = E.id)
-          
-
-            /*
-                Paso 8B: Actualizar NuevoSaldo en cada movimiento.
-
-                El problema: todos los movimientos se insertaron con NuevoSaldo = 0.
-                Hay que calcular cual era el saldo del empleado exactamente
-                despues de cada movimiento, en orden cronologico.
-
-                La logica:
-                Para cada movimiento, el NuevoSaldo es la suma acumulada
-                de todos los montos del mismo empleado hasta esa fecha,
-                donde Credito suma y Debito resta.
-
-                Ejemplo para un empleado:
-                  Movimiento 1 - Credito 5 NuevoSaldo = 5
-                  Movimiento 2 - Debito  2 NuevoSaldo = 3
-                  Movimiento 3 - Credito 4  NuevoSaldo = 7
-
-                Para hacerlo sin cursores:
-                Usamos una subconsulta correlacionada. Para cada fila de M1
-                (el movimiento que se esta actualizando), la subconsulta busca
-                en M2 todos los movimientos del MISMO empleado con fecha
-                menor o igual a la fecha de M1, y suma sus montos con signo
-                segun el tipo de accion. El resultado es el saldo acumulado
-                hasta ese momento.
-            */
-            UPDATE dbo.Movimiento
-            SET NuevoSaldo =
-                (
-                    /*
-                        Subconsulta correlacionada:
-                        Para cada movimiento M1, suma todos los montos
-                        de movimientos M2 del mismo empleado con fecha
-                        menor o igual a la fecha de M1.
-                        Credito suma, Debito resta.
-                    */
-                    SELECT SUM(
-                        CASE
-                            WHEN TM2.TipoAccion = 'Credito' THEN  M2.Monto
-                            ELSE                                  -M2.Monto
-                        END
-                    )
-                    FROM dbo.Movimiento AS M2
-                    /*
-                        JOIN para saber si cada movimiento M2
-                        es Credito o Debito.
-                    */
-                    INNER JOIN dbo.TipoMovimiento AS TM2 ON (TM2.id = M2.IdTipoMovimiento)
-                    WHERE (M2.IdEmpleado = M1.IdEmpleado)  /* mismo empleado que M1 */
-                        AND (M2.Fecha <= M1.Fecha)          /* todos los movimientos hasta esta fecha */
-                )
-            FROM dbo.Movimiento AS M1
-
-        COMMIT TRANSACTION
-
-    END TRY
-    BEGIN CATCH
-
-        /*
-            Si algo fallo en cualquier paso dentro de la transaccion,
-            se revierte todo lo que se haya insertado.
-            Garantiza el "todo o nada" de la carga de datos.
-        */
-        IF (@@TRANCOUNT > 0)
-            ROLLBACK TRANSACTION
-
-        SET @outResultCode = 50008
-
-        INSERT INTO dbo.DBError
-        (
-            UserName
-        ,   Number
-        ,   [State]
-        ,   Severity
-        ,   Line
-        ,   [Procedure]
-        ,   [Message]
-        ,   [DateTime]
-        )
-        VALUES
-        (
-            SUSER_NAME()
-        ,   ERROR_NUMBER()
-        ,   ERROR_STATE()
-        ,   ERROR_SEVERITY()
-        ,   ERROR_LINE()
-        ,   ERROR_PROCEDURE()
-        ,   ERROR_MESSAGE()
-        ,   GETDATE()
-        )
-
-    END CATCH
-
-    SELECT @outResultCode AS resultCode
-
-END
-GO
 /*
     ListarPuestos
     Recibe:  nada
@@ -1826,3 +1528,92 @@ BEGIN
 
 END;
 GO
+/*
+    VerificarBloqueo
+    Recibe:
+    @inUsername: nombre de usuario que intenta hacer login
+    @inIP: IP desde donde se intenta el login
+    Retorna: @outBloqueado = 1 si esta bloqueado, 0 si no
+    Descripcion: Consulta la bitacora para ver si el usuario
+                 tiene mas de 5 intentos fallidos en los
+                 ultimos 20 minutos desde esa IP
+*/
+ALTER PROCEDURE [dbo].[VerificarBloqueo]
+    @inUsername VARCHAR(100)
+,   @inIP       VARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON
+    DECLARE @outResultCode    INT = 0
+    DECLARE @outBloqueado     BIT = 0
+    DECLARE @intentosFallidos INT = 0
+    DECLARE @idUsuario        INT = 0
+
+    BEGIN TRY
+
+        /*
+            Obtener el id del usuario por su username
+            para consultar la bitacora
+        */
+        SELECT @idUsuario = U.id
+        FROM dbo.Usuario AS U
+        WHERE (U.Username = @inUsername)
+
+       /*
+    Contar intentos fallidos combinando IdUsuario e IP.
+    Si el usuario existe en la BD, busca por su id real.
+    Si no existe, busca por IP con IdUsuario = 0.
+    */
+    SELECT @intentosFallidos = COUNT(*)
+    FROM dbo.BitacoraEvento AS B
+    WHERE (B.IdTipoEvento = 2)
+        AND (B.IpPostIn = @inIP)
+        AND (
+            B.IdUsuario = @idUsuario  -- id real si existe
+            OR B.IdUsuario = 0        -- Desconocido si no existe
+        )
+        AND (B.PostTime >= DATEADD(MINUTE, -20, GETDATE()))
+        /*
+            Si hay mas de 5 intentos fallidos,
+            el usuario esta bloqueado
+        */
+        IF (@intentosFallidos >= 5)
+        BEGIN
+            SET @outBloqueado = 1
+        END
+
+    END TRY
+    BEGIN CATCH
+
+        SET @outResultCode = 50008
+
+        INSERT INTO dbo.DBError
+        (
+            UserName
+        ,   Number
+        ,   [State]
+        ,   Severity
+        ,   Line
+        ,   [Procedure]
+        ,   [Message]
+        ,   [DateTime]
+        )
+        VALUES
+        (
+            SUSER_NAME()
+        ,   ERROR_NUMBER()
+        ,   ERROR_STATE()
+        ,   ERROR_SEVERITY()
+        ,   ERROR_LINE()
+        ,   ERROR_PROCEDURE()
+        ,   ERROR_MESSAGE()
+        ,   GETDATE()
+        )
+
+    END CATCH
+
+    SELECT
+        @outBloqueado  AS bloqueado
+    ,   @outResultCode AS resultCode
+
+END

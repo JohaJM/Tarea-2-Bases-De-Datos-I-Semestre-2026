@@ -69,3 +69,31 @@ def logout(id_usuario, ip):
         conn.close()
 
     return result_code
+
+# Función para verificar si el usuario esta bloqueado
+
+def verificar_bloqueo(username, ip):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Llamar al SP para verificar si el usuario esta bloqueado
+        cursor.execute(
+            "EXEC dbo.VerificarBloqueo @inUsername=?, @inIP=?",
+            username, ip
+        )
+
+        resultado   = cursor.fetchone()
+        bloqueado   = resultado[0]
+        result_code = resultado[1]
+
+        if (result_code != 0):
+            bloqueado = 0
+
+    except pyodbc.Error:
+        bloqueado = 0
+
+    finally:
+        conn.close()
+
+    return bloqueado

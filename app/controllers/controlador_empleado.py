@@ -57,8 +57,19 @@ def insertar_empleado_view():
         cedula  = request.form['cedula'].strip()
         id_puesto = request.form['id_puesto']
         
-        #DEBUG TEMPORAL
         print(f"DEBUG: nombre={nombre}, cedula={cedula}, id_puesto={id_puesto}, id_usuario={session['id_usuario']}")
+        
+            # Validacion de nombre - solo letras y espacios
+        if (not nombre.replace(' ', '').isalpha()):
+            mensaje = obtener_mensaje_error(50009)
+            flash(mensaje)
+            return redirect(url_for('empleado.insertar_empleado_view'))
+
+        # 
+        if (not cedula.isdigit()):
+            mensaje = obtener_mensaje_error(50010)
+            flash(mensaje)
+            return redirect(url_for('empleado.insertar_empleado_view'))
 
         # Llamar al model para insertar el empleado
         result_code = insertar_empleado(nombre, cedula, id_puesto, id_usuario, ip)

@@ -1,6 +1,6 @@
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from app.model.modelo_auth import login, logout
+from app.model.modelo_auth import login, logout, verificar_bloqueo
 from app.model.modelo_empleado import obtener_mensaje_error
 
 auth_bp = Blueprint('auth', __name__)
@@ -33,10 +33,18 @@ def login_view():
             mensaje = obtener_mensaje_error(result_code)
             flash(mensaje)  # Mostrar mensaje de error al usuario
             
-            return redirect(url_for('auth.login_view'))
+            return redirect(url_for('auth.login_view') + f'?username={username}') #mando el username para que se mantenga en el form
+    # IMPORTANTE: actualizaciones realizadas para la funcionalidad de deshabilitar un usuario
+    # GET: verificar si el usuario esta bloqueado antes de mostrar el formulario
+    username_previo = request.args.get('username', '')
+    ip = request.remote_addr
+    bloqueado= 0
+    print(f"DEBUG: username={username_previo}, bloqueado={bloqueado}")
 
-    # GET: mostrar formulario de login
-    return render_template('login.html')
+    if (username_previo):
+        bloqueado = verificar_bloqueo(username_previo, ip)
+
+    return render_template('login.html', bloqueado=bloqueado, username=username_previo)
 
 
 @auth_bp.route('/logout')

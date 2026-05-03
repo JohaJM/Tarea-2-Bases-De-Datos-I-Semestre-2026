@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Iniciar Sesion</title>
+    <title>Iniciar Sesión</title>
     {# Cargo el CSS externo desde la carpeta static #}
     <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
 </head>
@@ -25,19 +25,28 @@
                 {# Campo Usuario #}
                 <div class="campo">
                     <label for="username">Usuario</label>
-                    <input type="text" id="username" name="username" placeholder="ejemplo1234">
+                    <input type="text" id="username" name="username" 
+                    placeholder="ejemplo1234"
+                    value="{{ username }}">
                 </div>
 
                 {# Campo Contrasena #}
                 <div class="campo">
-                    <label for="password">Contrasena</label>
-                    <input type="password" id="password" name="password" placeholder="..........">
+                    <label for="password">Contraseña</label>
+                    <input type="password" id="password" name="password" 
+                    placeholder="..........">
                 </div>
 
                 {# Boton submit #}
                 <div class="boton-contenedor">
-                    <button type="submit" class="boton-login">Iniciar sesion</button>
+                    <button type="submit" class="boton-login" {% if bloqueado %}disabled{% endif %}>Iniciar sesión</button>
                 </div>
+
+                {% if bloqueado %}
+                    <p class="mensajes-error">
+                        Demasiados intentos de login, intente de nuevo dentro de 10 minutos.
+                    </p>
+                {% endif %}
 
             </form>
 
